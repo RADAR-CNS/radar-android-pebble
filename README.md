@@ -1,14 +1,22 @@
 # Pebble RADAR-pRMT plugin
 
-Application to be run on an Android 4.4 (or later) device with Bluetooth Low Energy (Bluetooth 4.0 or later), to interact with wearable devices. The app is cloned from the [Empatica sample app][2].
-
-Currently the Empatica E4 and Pebble 2 are supported. Also note that the application only runs on an ARM architecture.
-
-![Screenshot](/man/screen20161215_edited.png?raw=True "Screenshot 2016-12-15")
+Pebble plugin for the RADAR-AndroidApplication app, to be run on an Android 4.4 (or later) device with Bluetooth Low Energy (Bluetooth 4.0 or later), to interact with wearable devices.
 
 ## Installation
 
-To run this app with a Pebble device, the RADAR-CNS app must be installed on the Pebble 2. For now, [install the Pebble SDK](https://developer.pebble.com/sdk/install/) on your machine. Go to the `pebble/` directory. There we can use the [Pebble command line tools](https://developer.pebble.com/guides/tools-and-resources/pebble-tool/). First, build the app with
+First, add the plugin code to your application:
+
+```gradle
+repositories {
+    maven { url  'http://dl.bintray.com/radar-cns/org.radarcns' }
+}
+
+dependencies {
+    compile 'org.radarcns:radar-android-pebble:0.1-alpha.1'
+}
+```
+
+To run this app with a Pebble device, the RADAR-CNS app must be installed on the Pebble. For now, [install the Pebble SDK](https://developer.pebble.com/sdk/install/) on your machine. Go to the `pebble/` directory. There we can use the [Pebble command line tools](https://developer.pebble.com/guides/tools-and-resources/pebble-tool/). First, build the app with
 ```shell
 pebble build
 ```
@@ -27,4 +35,4 @@ The RADAR-CNS Pebble app will now send data to the endpoint.
 
 ## Contributing
 
-Make a pull request once the code is working.
+Code should be formatted using the [Google Java Code Style Guide](https://google.github.io/styleguide/javaguide.html), except using 4 spaces as indentation. Make a pull request once the code is working.
