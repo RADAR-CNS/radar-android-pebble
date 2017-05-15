@@ -16,14 +16,10 @@
 
 package org.radarcns.pebble;
 
-import android.os.Bundle;
-
 import org.apache.avro.specific.SpecificRecord;
-import org.radarcns.android.RadarConfiguration;
+import org.radarcns.android.device.BaseDeviceState;
 import org.radarcns.android.device.DeviceManager;
 import org.radarcns.android.device.DeviceService;
-import org.radarcns.android.device.BaseDeviceState;
-import org.radarcns.android.device.DeviceStatusListener;
 import org.radarcns.android.device.DeviceTopics;
 import org.radarcns.key.MeasurementKey;
 import org.radarcns.topic.AvroTopic;
@@ -33,8 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.radarcns.android.RadarConfiguration.DEFAULT_GROUP_ID_KEY;
-
 /**
  * A service that manages a Pebble2DeviceManager and a TableDataHandler to send store the data of a
  * Pebble 2 and send it to a Kafka REST proxy.
@@ -42,7 +36,6 @@ import static org.radarcns.android.RadarConfiguration.DEFAULT_GROUP_ID_KEY;
 public class PebbleService extends DeviceService {
     private static final Logger logger = LoggerFactory.getLogger(PebbleService.class);
     private PebbleTopics topics;
-    private String groupId;
 
     @Override
     public void onCreate() {
@@ -54,14 +47,12 @@ public class PebbleService extends DeviceService {
 
     @Override
     protected DeviceManager createDeviceManager() {
-        return new PebbleDeviceManager(this, this, groupId, getDataHandler(), topics);
+        return new PebbleDeviceManager(this, this, getUserId(), getDataHandler(), topics);
     }
 
     @Override
     protected BaseDeviceState getDefaultState() {
-        PebbleDeviceStatus newStatus = new PebbleDeviceStatus();
-        newStatus.setStatus(DeviceStatusListener.Status.DISCONNECTED);
-        return newStatus;
+        return new PebbleDeviceStatus();
     }
 
     @Override
@@ -74,13 +65,5 @@ public class PebbleService extends DeviceService {
         return Arrays.<AvroTopic<MeasurementKey, ? extends SpecificRecord>>asList(
                 topics.getAccelerationTopic(), topics.getHeartRateTopic(),
                 topics.getHeartRateFilteredTopic());
-    }
-
-    @Override
-    protected void onInvocation(Bundle bundle) {
-        super.onInvocation(bundle);
-        if (groupId == null) {
-            groupId = RadarConfiguration.getStringExtra(bundle, DEFAULT_GROUP_ID_KEY);
-        }
     }
 }
