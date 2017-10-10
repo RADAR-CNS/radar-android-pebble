@@ -17,11 +17,8 @@
 package org.radarcns.pebble;
 
 import org.apache.avro.specific.SpecificRecord;
-import org.radarcns.android.device.BaseDeviceState;
-import org.radarcns.android.device.DeviceManager;
 import org.radarcns.android.device.DeviceService;
-import org.radarcns.android.device.DeviceTopics;
-import org.radarcns.key.MeasurementKey;
+import org.radarcns.kafka.ObservationKey;
 import org.radarcns.topic.AvroTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +30,7 @@ import java.util.List;
  * A service that manages a Pebble2DeviceManager and a TableDataHandler to send store the data of a
  * Pebble 2 and send it to a Kafka REST proxy.
  */
-public class PebbleService extends DeviceService {
+public class PebbleService extends DeviceService<PebbleDeviceStatus> {
     private static final Logger logger = LoggerFactory.getLogger(PebbleService.class);
     private PebbleTopics topics;
 
@@ -46,23 +43,23 @@ public class PebbleService extends DeviceService {
     }
 
     @Override
-    protected DeviceManager createDeviceManager() {
-        return new PebbleDeviceManager(this, this, getUserId(), getDataHandler(), topics);
+    protected PebbleDeviceManager createDeviceManager() {
+        return new PebbleDeviceManager(this);
     }
 
     @Override
-    protected BaseDeviceState getDefaultState() {
+    protected PebbleDeviceStatus getDefaultState() {
         return new PebbleDeviceStatus();
     }
 
     @Override
-    protected DeviceTopics getTopics() {
+    protected PebbleTopics getTopics() {
         return topics;
     }
 
     @Override
-    protected List<AvroTopic<MeasurementKey, ? extends SpecificRecord>> getCachedTopics() {
-        return Arrays.<AvroTopic<MeasurementKey, ? extends SpecificRecord>>asList(
+    protected List<AvroTopic<ObservationKey, ? extends SpecificRecord>> getCachedTopics() {
+        return Arrays.<AvroTopic<ObservationKey, ? extends SpecificRecord>>asList(
                 topics.getAccelerationTopic(), topics.getHeartRateTopic(),
                 topics.getHeartRateFilteredTopic());
     }

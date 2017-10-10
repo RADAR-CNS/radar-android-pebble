@@ -17,15 +17,19 @@
 package org.radarcns.pebble;
 
 import org.radarcns.android.device.DeviceTopics;
-import org.radarcns.key.MeasurementKey;
+import org.radarcns.kafka.ObservationKey;
+import org.radarcns.passive.pebble.Pebble2Acceleration;
+import org.radarcns.passive.pebble.Pebble2BatteryLevel;
+import org.radarcns.passive.pebble.Pebble2HeartRate;
+import org.radarcns.passive.pebble.Pebble2HeartRateFiltered;
 import org.radarcns.topic.AvroTopic;
 
 /** Topic manager for topics concerning the Empatica E4. */
 public class PebbleTopics extends DeviceTopics {
-    private final AvroTopic<MeasurementKey, Pebble2Acceleration> accelerationTopic;
-    private final AvroTopic<MeasurementKey, Pebble2BatteryLevel> batteryLevelTopic;
-    private final AvroTopic<MeasurementKey, Pebble2HeartRate> heartRateTopic;
-    private final AvroTopic<MeasurementKey, Pebble2HeartRateFiltered> heartRateFilteredTopic;
+    private final AvroTopic<ObservationKey, Pebble2Acceleration> accelerationTopic;
+    private final AvroTopic<ObservationKey, Pebble2BatteryLevel> batteryLevelTopic;
+    private final AvroTopic<ObservationKey, Pebble2HeartRate> heartRateTopic;
+    private final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTopic;
 
     private static final Object syncObject = new Object();
     private static PebbleTopics instance = null;
@@ -40,33 +44,33 @@ public class PebbleTopics extends DeviceTopics {
     }
 
     private PebbleTopics() {
-        accelerationTopic = createTopic("android_pebble2_acceleration",
+        accelerationTopic = createTopic("android_pebble_2_acceleration",
                 Pebble2Acceleration.getClassSchema(),
                 Pebble2Acceleration.class);
-        batteryLevelTopic = createTopic("android_pebble2_battery_level",
+        batteryLevelTopic = createTopic("android_pebble_2_battery_level",
                 Pebble2BatteryLevel.getClassSchema(),
                 Pebble2BatteryLevel.class);
-        heartRateTopic = createTopic("android_pebble2_heart_rate",
+        heartRateTopic = createTopic("android_pebble_2_heartrate",
                 Pebble2HeartRate.getClassSchema(),
                 Pebble2HeartRate.class);
-        heartRateFilteredTopic = createTopic("android_pebble2_heart_rate_filtered",
+        heartRateFilteredTopic = createTopic("android_pebble_2_heartrate_filtered",
                 Pebble2HeartRateFiltered.getClassSchema(),
                 Pebble2HeartRateFiltered.class);
     }
 
-    public AvroTopic<MeasurementKey, Pebble2Acceleration> getAccelerationTopic() {
+    public AvroTopic<ObservationKey, Pebble2Acceleration> getAccelerationTopic() {
         return accelerationTopic;
     }
 
-    public AvroTopic<MeasurementKey, Pebble2BatteryLevel> getBatteryLevelTopic() {
+    public AvroTopic<ObservationKey, Pebble2BatteryLevel> getBatteryLevelTopic() {
         return batteryLevelTopic;
     }
 
-    public AvroTopic<MeasurementKey, Pebble2HeartRate> getHeartRateTopic() {
+    public AvroTopic<ObservationKey, Pebble2HeartRate> getHeartRateTopic() {
         return heartRateTopic;
     }
 
-    public AvroTopic<MeasurementKey, Pebble2HeartRateFiltered> getHeartRateFilteredTopic() {
+    public AvroTopic<ObservationKey, Pebble2HeartRateFiltered> getHeartRateFilteredTopic() {
         return heartRateFilteredTopic;
     }
 }

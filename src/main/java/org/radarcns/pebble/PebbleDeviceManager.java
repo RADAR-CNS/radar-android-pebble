@@ -24,20 +24,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 
+import android.util.ArrayMap;
 import com.getpebble.android.kit.PebbleKit;
 
 import org.radarcns.android.data.DataCache;
-import org.radarcns.android.data.TableDataHandler;
-import org.radarcns.android.device.DeviceManager;
+import org.radarcns.android.device.AbstractDeviceManager;
 import org.radarcns.android.device.DeviceStatusListener;
 import org.radarcns.android.util.BundleSerialization;
-import org.radarcns.key.MeasurementKey;
+import org.radarcns.kafka.ObservationKey;
+import org.radarcns.passive.pebble.Pebble2Acceleration;
+import org.radarcns.passive.pebble.Pebble2BatteryLevel;
+import org.radarcns.passive.pebble.Pebble2HeartRate;
+import org.radarcns.passive.pebble.Pebble2HeartRateFiltered;
 import org.radarcns.topic.AvroTopic;
 import org.radarcns.util.Serialization;
 import org.radarcns.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -47,7 +53,7 @@ import static com.getpebble.android.kit.Constants.INTENT_PEBBLE_CONNECTED;
 import static com.getpebble.android.kit.Constants.INTENT_PEBBLE_DISCONNECTED;
 
 /** Manages scanning for an Pebble wearable and connecting to it */
-class PebbleDeviceManager implements DeviceManager {
+class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDeviceStatus> {
     private static final UUID APP_UUID = UUID.fromString("a3b06265-d50c-4205-8ee4-e4c12abca326");
     private static final int ACCELERATION_LOG = 11;
     private static final int HEART_RATE_LOG = 12;
@@ -58,57 +64,42 @@ class PebbleDeviceManager implements DeviceManager {
     private static final Pattern CONTAINS_PEBBLE_PATTERN =
             Strings.containsIgnoreCasePattern("pebble");
 
-    private final TableDataHandler dataHandler;
-    private final Context context;
-
-    private final DeviceStatusListener pebble2Service;
     private final BroadcastReceiver connectReceiver;
     private final BroadcastReceiver disconnectReceiver;
     private final PebbleKit.PebbleDataLogReceiver dataLogReceiver;
 
-    private final DataCache<MeasurementKey, Pebble2Acceleration> accelerationTable;
-    private final DataCache<MeasurementKey, Pebble2HeartRate> heartRateTable;
-    private final DataCache<MeasurementKey, Pebble2HeartRateFiltered> heartRateFilteredTable;
-    private final AvroTopic<MeasurementKey, Pebble2BatteryLevel> batteryTopic;
+    private final DataCache<ObservationKey, Pebble2Acceleration> accelerationTable;
+    private final DataCache<ObservationKey, Pebble2HeartRate> heartRateTable;
+    private final DataCache<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTable;
+    private final AvroTopic<ObservationKey, Pebble2BatteryLevel> batteryTopic;
 
-    private final PebbleDeviceStatus deviceStatus;
-
-    private String deviceName;
-    private boolean isClosed;
     private Pattern[] acceptableIds;
 
-    public PebbleDeviceManager(Context context, DeviceStatusListener pebble2Service, String groupId, TableDataHandler handler, PebbleTopics topics) {
-        this.dataHandler = handler;
-        this.accelerationTable = dataHandler.getCache(topics.getAccelerationTopic());
-        this.heartRateTable = dataHandler.getCache(topics.getHeartRateTopic());
-        this.heartRateFilteredTable = dataHandler.getCache(topics.getHeartRateFilteredTopic());
+    public PebbleDeviceManager(PebbleService service) {
+        super(service);
+        PebbleTopics topics = service.getTopics();
+        this.accelerationTable = getCache(topics.getAccelerationTopic());
+        this.heartRateTable = getCache(topics.getHeartRateTopic());
+        this.heartRateFilteredTable = getCache(topics.getHeartRateFilteredTopic());
         this.batteryTopic = topics.getBatteryLevelTopic();
 
-        this.pebble2Service = pebble2Service;
-        this.context = context;
-
-        synchronized (this) {
-            this.deviceName = null;
-            this.deviceStatus = new PebbleDeviceStatus();
-            this.deviceStatus.getId().setUserId(groupId);
-            this.isClosed = true;
-        }
         this.dataLogReceiver = new PebbleKit.PebbleDataLogReceiver(APP_UUID) {
             @Override
             public void receiveData(Context context, UUID logUuid, Long timestamp,
                                     Long tag, byte[] data) {
                 updateDeviceId();
                 synchronized (PebbleDeviceManager.this) {
-                    if (!currentDeviceIsAcceptable()) {
-                        logger.info("Device {} is not acceptable", deviceStatus.getId());
+                    if (getName() == null) {
+                        logger.info("Device is not acceptable");
                         return;
                     }
-                    if (deviceStatus.getStatus() != DeviceStatusListener.Status.CONNECTED) {
+                    if (getState().getStatus() != DeviceStatusListener.Status.CONNECTED) {
                         updateStatus(DeviceStatusListener.Status.CONNECTED);
                     }
                 }
                 double time = Serialization.bytesToLong(data, 0) / 1000d;
                 double timeReceived = System.currentTimeMillis() / 1000d;
+                PebbleDeviceStatus state = getState();
                 try {
                     switch (tag.intValue()) {
                         case ACCELERATION_LOG:
@@ -125,41 +116,41 @@ class PebbleDeviceManager implements DeviceManager {
                                 i += 2;
                                 float z = Serialization.bytesToShort(data, i) / 1000f;
                                 i += 2;
-                                dataHandler.addMeasurement(accelerationTable, getDeviceId(), new Pebble2Acceleration(time, timeReceived, x, y, z));
-                                deviceStatus.setAcceleration(x, y, z);
+                                send(accelerationTable, new Pebble2Acceleration(time, timeReceived, x, y, z));
+                                state.setAcceleration(x, y, z);
                             }
                             break;
                         case HEART_RATE_LOG:
                             float heartRate = Serialization.bytesToInt(data, 8);
-                            dataHandler.addMeasurement(heartRateTable, getDeviceId(), new Pebble2HeartRate(time, timeReceived, heartRate));
-                            deviceStatus.setHeartRate(heartRate);
+                            send(heartRateTable, new Pebble2HeartRate(time, timeReceived, heartRate));
+                            state.setHeartRate(heartRate);
                             break;
                         case HEART_RATE_FILTERED_LOG:
                             float heartRateFiltered = Serialization.bytesToInt(data, 8);
-                            dataHandler.addMeasurement(heartRateFilteredTable, getDeviceId(), new Pebble2HeartRateFiltered(time, timeReceived, heartRateFiltered));
-                            deviceStatus.setHeartRateFiltered(heartRateFiltered);
+                            send(heartRateFilteredTable, new Pebble2HeartRateFiltered(time, timeReceived, heartRateFiltered));
+                            state.setHeartRateFiltered(heartRateFiltered);
                             break;
                         case BATTERY_LEVEL_LOG:
                             float batteryLevel = data[8] / 100f;
                             boolean isCharging = data[9] == 1;
                             boolean isPluggedIn = data[10] == 1;
-                            dataHandler.trySend(batteryTopic, 0L, getDeviceId(), new Pebble2BatteryLevel(time, timeReceived, batteryLevel, isCharging, isPluggedIn));
-                            deviceStatus.setBatteryLevel(batteryLevel);
-                            deviceStatus.setBatteryIsCharging(isCharging);
-                            deviceStatus.setBatteryIsPlugged(isPluggedIn);
+                            trySend(batteryTopic, 0L, new Pebble2BatteryLevel(time, timeReceived, batteryLevel, isCharging, isPluggedIn));
+                            state.setBatteryLevel(batteryLevel);
+                            state.setBatteryIsCharging(isCharging);
+                            state.setBatteryIsPlugged(isPluggedIn);
                             break;
                         default:
                             logger.warn("Log {} not recognized", tag.intValue());
                     }
                 } catch (Exception ex) {
-                    logger.error("Failed to add data to state {}", deviceStatus, ex);
+                    logger.error("Failed to add data to state {}", state, ex);
                 }
             }
 
             @Override
             public void onFinishSession(Context context, UUID logUuid, Long timestamp,
                                         Long tag) {
-                logger.info("Pebble 2 session finished {}", deviceName);
+                logger.info("Pebble 2 session finished {}", getName());
             }
         };
         this.connectReceiver = new BroadcastReceiver() {
@@ -179,14 +170,16 @@ class PebbleDeviceManager implements DeviceManager {
                             logger.warn("Pebble device not registered with the BluetoothAdaptor; set to address {}", address);
                         }
                         synchronized (PebbleDeviceManager.this) {
-                            deviceName = name;
-                            deviceStatus.getId().setSourceId(address);
-                            if (currentDeviceIsAcceptable()) {
+                            if (deviceIsAcceptable(name, address)) {
+                                setName(name);
+                                Map<String, String> attributes = new ArrayMap<>(3);
+                                attributes.put("macAddress", address);
+                                attributes.put("name", name);
+                                attributes.put("sdk", "com.getpebble:pebblekit:4.0.0");
+                                getService().registerDevice(name, attributes);
                                 logger.info("Pebble device {} with address {} connected", name, address);
                             } else {
                                 logger.warn("Pebble device {} with address {} not an accepted ID", name, address);
-                                deviceName = null;
-                                deviceStatus.getId().setSourceId(null);
                             }
                         }
                     }
@@ -199,10 +192,6 @@ class PebbleDeviceManager implements DeviceManager {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent.getAction().equals(INTENT_PEBBLE_DISCONNECTED)) {
-                    synchronized (this) {
-                        deviceStatus.getId().setSourceId(null);
-                        deviceName = null;
-                    }
                     logger.info("Pebble disconnected with intent {}", BundleSerialization.bundleToString(intent.getExtras()));
                     updateStatus(DeviceStatusListener.Status.DISCONNECTED);
                 }
@@ -214,12 +203,12 @@ class PebbleDeviceManager implements DeviceManager {
 
     private void updateDeviceId() {
         synchronized (this) {
-            if (deviceName != null) {
+            if (getName() != null) {
                 return;
             }
         }
 
-        BluetoothManager btManager = (BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothManager btManager = (BluetoothManager)getService().getSystemService(Context.BLUETOOTH_SERVICE);
 
         for (BluetoothDevice btDevice : btManager.getConnectedDevices(GATT_SERVER)) {
             String name = btDevice.getName();
@@ -228,16 +217,11 @@ class PebbleDeviceManager implements DeviceManager {
             }
             if (CONTAINS_PEBBLE_PATTERN.matcher(name).find()) {
                 synchronized (this) {
-                    deviceName = name;
-                    deviceStatus.getId().setSourceId(btDevice.getAddress());
-                    logger.info("Pebble device set to {} with address {}",
-                            deviceName, deviceStatus.getId().getSourceId());
 
-                    if (currentDeviceIsAcceptable()) {
-                        return;
-                    } else {
-                        deviceName = null;
-                        deviceStatus.getId().setSourceId(null);
+                    if (deviceIsAcceptable(name, btDevice.getAddress())) {
+                        setName(name);
+                        logger.info("Pebble device set to {} with address {}", name,
+                                btDevice.getAddress());
                     }
                 }
             }
@@ -245,23 +229,19 @@ class PebbleDeviceManager implements DeviceManager {
         logger.info("No connected pebble device found");
     }
 
-    private synchronized boolean currentDeviceIsAcceptable() {
-        return this.deviceStatus.getId().getSourceId() != null &&
-                (this.acceptableIds.length == 0
-                    || Strings.findAny(acceptableIds, deviceName)
-                    || Strings.findAny(acceptableIds, deviceStatus.getId().getSourceId()));
+    private synchronized boolean deviceIsAcceptable(String name, String address) {
+        return (this.acceptableIds.length == 0
+                    || Strings.findAny(acceptableIds, name)
+                    || Strings.findAny(acceptableIds, address));
     }
 
     @Override
     public void start(@NonNull final Set<String> acceptableIds) {
         synchronized (this) {
-            if (!isClosed) {
-                return;
-            }
-            this.isClosed = false;
             this.acceptableIds = Strings.containsPatterns(acceptableIds);
         }
         logger.info("Registering Pebble2 receivers");
+        PebbleService context = getService();
         PebbleKit.registerDataLogReceiver(context, dataLogReceiver);
         PebbleKit.registerPebbleConnectedReceiver(context, connectReceiver);
         PebbleKit.registerPebbleDisconnectedReceiver(context, disconnectReceiver);
@@ -269,54 +249,20 @@ class PebbleDeviceManager implements DeviceManager {
     }
 
     @Override
-    public synchronized boolean isClosed() {
-        return isClosed;
-    }
-
-    @Override
-    public PebbleDeviceStatus getState() {
-        return deviceStatus;
-    }
-
-    @Override
-    public void close() {
-        synchronized (this) {
-            logger.info("Closing device {}", deviceName);
-            if (this.isClosed) {
-                return;
-            }
-            this.isClosed = true;
+    public void close() throws IOException {
+        if (this.isClosed()) {
+            return;
         }
+        super.close();
+        PebbleService context = getService();
         context.unregisterReceiver(dataLogReceiver);
         context.unregisterReceiver(connectReceiver);
         context.unregisterReceiver(disconnectReceiver);
         updateStatus(DeviceStatusListener.Status.DISCONNECTED);
     }
 
-    private synchronized MeasurementKey getDeviceId() {
-        return deviceStatus.getId();
-    }
-
     @Override
-    public synchronized String getName() {
-        return deviceName;
-    }
-
-    @Override
-    public synchronized boolean equals(Object other) {
-        return other == this
-                || other != null && getClass().equals(other.getClass())
-                && deviceStatus.getId().getSourceId() != null
-                && deviceStatus.getId().equals(((PebbleDeviceManager) other).deviceStatus.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return deviceStatus.getId().hashCode();
-    }
-
-    private synchronized void updateStatus(DeviceStatusListener.Status status) {
-        this.deviceStatus.setStatus(status);
-        this.pebble2Service.deviceStatusUpdated(this, status);
+    protected void registerDeviceAtReady() {
+        // register at connect instead
     }
 }
