@@ -1,10 +1,9 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     repositories {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.3'
+        classpath 'com.android.tools.build:gradle:2.3.0'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
     }
@@ -15,12 +14,12 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: 'com.github.dcendents.android-maven'
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.1"
+    compileSdkVersion 25
+    buildToolsVersion "26.0.1"
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 22
+        minSdkVersion 21
+        targetSdkVersion 25
         versionCode 1
         versionName '0.1-alpha.1'
     }
@@ -54,32 +53,50 @@ android {
 
 group = 'org.radarcns'
 ext.moduleName = 'radar-android-pebble'
-ext.githubUrl = 'https://github.com/RADAR-CNS/RADAR-Android-Pebble.git'
-ext.moduleDescription = 'Pebble plugin for RADAR passive remote monitoring app'
+ext.description = 'Pebble plugin for RADAR passive remote monitoring app'
+ext.githubRepoName = 'RADAR-CNS/radar-android-pebble'
 version = android.defaultConfig.versionName
+
+ext.githubUrl = 'https://github.com/' + githubRepoName + '.git'
+ext.issueUrl = 'https://github.com/' + githubRepoName + '/issues'
+ext.website = 'http://radar-cns.org'
 
 //---------------------------------------------------------------------------//
 // Sources and classpath configurations                                      //
 //---------------------------------------------------------------------------//
 
+configurations.compile {
+    resolutionStrategy.cacheChangingModulesFor 0, 'SECONDS'
+}
+
 repositories {
     jcenter()
+    maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local' }
 }
 
 dependencies {
     compile 'com.getpebble:pebblekit:4.0.0'
 
-    compile 'com.android.support:appcompat-v7:22.2.0'
-    compile 'org.radarcns:radar-commons-android:0.1'
-    compile 'org.radarcns:radar-schemas-commons:0.1'
+    compile 'org.radarcns:radar-commons-android:0.3-SNAPSHOT'
+    compile 'org.radarcns:radar-schemas-commons:0.2-alpha.3-SNAPSHOT'
 
     testCompile 'junit:junit:4.12'
-    testCompile 'org.slf4j:slf4j-simple:1.7.21'
+    testCompile 'org.slf4j:slf4j-simple:1.7.25'
+}
+
+//---------------------------------------------------------------------------//
+// Build system metadata                                                     //
+//---------------------------------------------------------------------------//
+
+ext.sharedManifest = manifest {
+    attributes("Implementation-Title": moduleName,
+            "Implementation-Version": version)
 }
 
 task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
     classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+    manifest.from sharedManifest
 }
 
 task javadoc(type: Javadoc) {
@@ -91,39 +108,55 @@ task javadoc(type: Javadoc) {
 task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from javadoc.destinationDir
+    manifest.from sharedManifest
 }
+
+// add javadoc/source jar tasks as artifacts
 artifacts {
     archives javadocJar
     archives sourcesJar
 }
 
-def pomConfig = {
+ext.pomConfig = {
     licenses {
         license {
             name "The Apache Software License, Version 2.0"
             url "http://www.apache.org/licenses/LICENSE-2.0.txt"
-            distribution "RADAR Android Pebble"
+            distribution 'repo'
         }
     }
     developers {
         developer {
-            id "radar-cns"
-            name "Joris Borgdorff"
-            email "joris@thehyve.nl"
+            id 'blootsvoets'
+            name 'Joris Borgdorff'
+            email 'joris@thehyve.nl'
+            organization 'The Hyve'
         }
+    }
+    issueManagement {
+        system 'GitHub'
+        url githubUrl + '/issues'
+    }
+    organization {
+        name 'RADAR-CNS'
+        url website
+    }
+    scm {
+        connection 'scm:git:' + githubUrl
+        url githubUrl
     }
 }
 
 install {
     repositories.mavenInstaller {
         pom.project {
-            group project.group
+            groupId project.group
             artifactId moduleName
             version project.version
         }
         pom.withXml {
             def root = asNode()
-            root.appendNode('description', moduleDescription)
+            root.appendNode('description', description)
             root.appendNode('name', moduleName)
             root.appendNode('url', githubUrl)
             root.children().last() + pomConfig
@@ -134,16 +167,22 @@ install {
 bintray {
     user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
     key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
+    override = false
     configurations = ['archives']
     pkg {
         repo = project.group
         name = moduleName
         userOrg = 'radar-cns'
+        desc = description
         licenses = ['Apache-2.0']
+        websiteUrl = website
+        issueTrackerUrl = issueUrl
         vcsUrl = githubUrl
+        githubRepo = githubRepoName
+        githubReleaseNotesFile = 'README.md'
         version {
             name = project.version
-            desc = moduleDescription
+            desc = description
             vcsTag = System.getenv('TRAVIS_TAG')
             released = new Date()
             gpg {
@@ -154,6 +193,6 @@ bintray {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.4.1'
-    distributionUrl distributionUrl.replace("bin", "all")
+    gradleVersion = '4.1'
+    distributionType 'all'
 }

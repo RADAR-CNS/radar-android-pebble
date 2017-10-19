@@ -22,7 +22,8 @@ import android.os.RemoteException;
 import android.widget.Toast;
 
 import org.radarcns.android.device.DeviceServiceConnection;
-import org.radarcns.key.MeasurementKey;
+import org.radarcns.kafka.ObservationKey;
+import org.radarcns.passive.pebble.Pebble2HeartRateFiltered;
 import org.radarcns.topic.AvroTopic;
 import org.radarcns.android.util.Boast;
 import org.radarcns.data.Record;
@@ -37,7 +38,7 @@ import java.util.List;
 public class PebbleHeartbeatToast extends AsyncTask<DeviceServiceConnection<PebbleDeviceStatus>, Void, String[]> {
     private final Context context;
     private static final DecimalFormat singleDecimal = new DecimalFormat("0.0");
-    private static final AvroTopic<MeasurementKey, Pebble2HeartRateFiltered> topic = PebbleTopics
+    private static final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> topic = PebbleTopics
             .getInstance().getHeartRateFilteredTopic();
 
     public PebbleHeartbeatToast(Context context) {
@@ -50,10 +51,10 @@ public class PebbleHeartbeatToast extends AsyncTask<DeviceServiceConnection<Pebb
         String[] results = new String[params.length];
         for (int i = 0; i < params.length; i++) {
             try {
-                List<Record<MeasurementKey, Pebble2HeartRateFiltered>> measurements = params[i].getRecords(topic, 25);
+                List<Record<ObservationKey, Pebble2HeartRateFiltered>> measurements = params[i].getRecords(topic, 25);
                 if (!measurements.isEmpty()) {
                     StringBuilder sb = new StringBuilder(3200); // <32 chars * 100 measurements
-                    for (Record<MeasurementKey, Pebble2HeartRateFiltered> measurement : measurements) {
+                    for (Record<ObservationKey, Pebble2HeartRateFiltered> measurement : measurements) {
                         long diffTimeMillis = System.currentTimeMillis() - (long) (1000d * measurement.value.getTimeReceived());
                         sb.append(singleDecimal.format(diffTimeMillis / 1000d));
                         sb.append(" sec. ago: ");
@@ -64,7 +65,7 @@ public class PebbleHeartbeatToast extends AsyncTask<DeviceServiceConnection<Pebb
                 } else {
                     results[i] = null;
                 }
-            } catch (RemoteException | IOException e) {
+            } catch (IOException e) {
                 results[i] = null;
             }
         }

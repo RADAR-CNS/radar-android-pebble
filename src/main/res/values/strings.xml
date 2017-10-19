@@ -1,3 +1,7 @@
 <resources>
     <string name="pebbleDisplayName">Pebble</string>
+    <string name="pebble_description">Collects Pebble 2 sensor data. Install the accompanying Pebble
+        RADAR-CNS app and pair the Pebble using the Pebble app. This applicaiton will then start
+        gathering data.
+    </string>
 </resources>

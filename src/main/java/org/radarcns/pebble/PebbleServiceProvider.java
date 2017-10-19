@@ -16,8 +16,7 @@
 
 package org.radarcns.pebble;
 
-import android.os.Parcelable;
-
+import android.support.annotation.NonNull;
 import org.radarcns.android.device.DeviceServiceProvider;
 
 import java.util.Arrays;
@@ -29,13 +28,13 @@ import static android.Manifest.permission.BLUETOOTH_ADMIN;
 
 public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceStatus> {
     @Override
-    public Class<?> getServiceClass() {
-        return PebbleService.class;
+    public String getDescription() {
+        return getActivity().getString(R.string.pebble_description);
     }
 
     @Override
-    public Parcelable.Creator<PebbleDeviceStatus> getStateCreator() {
-        return PebbleDeviceStatus.CREATOR;
+    public Class<?> getServiceClass() {
+        return PebbleService.class;
     }
 
     @Override
@@ -43,6 +42,7 @@ public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceSta
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     public void showDetailView() {
         new PebbleHeartbeatToast(getActivity()).execute(getConnection());
     }
@@ -50,6 +50,24 @@ public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceSta
     @Override
     public List<String> needsPermissions() {
         return Arrays.asList(ACCESS_COARSE_LOCATION, BLUETOOTH, BLUETOOTH_ADMIN);
+    }
+
+    @NonNull
+    @Override
+    public String getDeviceProducer() {
+        return "Pebble";
+    }
+
+    @NonNull
+    @Override
+    public String getDeviceModel() {
+        return "2";
+    }
+
+    @NonNull
+    @Override
+    public String getVersion() {
+        return BuildConfig.VERSION_NAME;
     }
 
     @Override
