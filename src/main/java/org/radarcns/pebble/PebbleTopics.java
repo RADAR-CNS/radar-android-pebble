@@ -44,18 +44,10 @@ public class PebbleTopics extends DeviceTopics {
     }
 
     private PebbleTopics() {
-        accelerationTopic = createTopic("android_pebble_2_acceleration",
-                Pebble2Acceleration.getClassSchema(),
-                Pebble2Acceleration.class);
-        batteryLevelTopic = createTopic("android_pebble_2_battery_level",
-                Pebble2BatteryLevel.getClassSchema(),
-                Pebble2BatteryLevel.class);
-        heartRateTopic = createTopic("android_pebble_2_heartrate",
-                Pebble2HeartRate.getClassSchema(),
-                Pebble2HeartRate.class);
-        heartRateFilteredTopic = createTopic("android_pebble_2_heartrate_filtered",
-                Pebble2HeartRateFiltered.getClassSchema(),
-                Pebble2HeartRateFiltered.class);
+        accelerationTopic = createTopic("android_pebble_2_acceleration", Pebble2Acceleration.class);
+        batteryLevelTopic = createTopic("android_pebble_2_battery_level", Pebble2BatteryLevel.class);
+        heartRateTopic = createTopic("android_pebble_2_heartrate", Pebble2HeartRate.class);
+        heartRateFilteredTopic = createTopic("android_pebble_2_heartrate_filtered", Pebble2HeartRateFiltered.class);
     }
 
     public AvroTopic<ObservationKey, Pebble2Acceleration> getAccelerationTopic() {

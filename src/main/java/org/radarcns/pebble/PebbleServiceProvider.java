@@ -29,7 +29,7 @@ import static android.Manifest.permission.BLUETOOTH_ADMIN;
 public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceStatus> {
     @Override
     public String getDescription() {
-        return getActivity().getString(R.string.pebble_description);
+        return getRadarService().getString(R.string.pebble_description);
     }
 
     @Override
@@ -44,7 +44,7 @@ public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceSta
 
     @SuppressWarnings("unchecked")
     public void showDetailView() {
-        new PebbleHeartbeatToast(getActivity()).execute(getConnection());
+        new PebbleHeartbeatToast(getRadarService()).execute(getConnection());
     }
 
     @Override
@@ -72,6 +72,6 @@ public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceSta
 
     @Override
     public String getDisplayName() {
-        return getActivity().getString(R.string.pebbleDisplayName);
+        return getRadarService().getString(R.string.pebbleDisplayName);
     }
 }
