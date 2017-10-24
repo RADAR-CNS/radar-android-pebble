@@ -18,7 +18,6 @@ package org.radarcns.pebble;
 
 import android.content.Context;
 import android.os.AsyncTask;
-import android.os.RemoteException;
 import android.widget.Toast;
 
 import org.radarcns.android.device.DeviceServiceConnection;
@@ -38,8 +37,8 @@ import java.util.List;
 public class PebbleHeartbeatToast extends AsyncTask<DeviceServiceConnection<PebbleDeviceStatus>, Void, String[]> {
     private final Context context;
     private static final DecimalFormat singleDecimal = new DecimalFormat("0.0");
-    private static final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> topic = PebbleTopics
-            .getInstance().getHeartRateFilteredTopic();
+    private static final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> topic =
+            PebbleDeviceManager.getHeartRateFilteredTopic();
 
     public PebbleHeartbeatToast(Context context) {
         this.context = context;

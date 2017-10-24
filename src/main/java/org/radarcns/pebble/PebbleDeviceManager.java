@@ -27,7 +27,6 @@ import android.support.annotation.NonNull;
 import android.util.ArrayMap;
 import com.getpebble.android.kit.PebbleKit;
 
-import org.radarcns.android.data.DataCache;
 import org.radarcns.android.device.AbstractDeviceManager;
 import org.radarcns.android.device.DeviceStatusListener;
 import org.radarcns.android.util.BundleSerialization;
@@ -70,18 +69,17 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
 
     private final AvroTopic<ObservationKey, Pebble2Acceleration> accelerationTopic;
     private final AvroTopic<ObservationKey, Pebble2HeartRate> heartRateTopic;
-    private final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTopic;
+    private static volatile AvroTopic<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTopic;
     private final AvroTopic<ObservationKey, Pebble2BatteryLevel> batteryTopic;
 
     private Pattern[] acceptableIds;
 
     public PebbleDeviceManager(PebbleService service) {
         super(service);
-        PebbleTopics topics = service.getTopics();
-        this.accelerationTopic = topics.getAccelerationTopic();
-        this.heartRateTopic = topics.getHeartRateTopic();
-        this.heartRateFilteredTopic = topics.getHeartRateFilteredTopic();
-        this.batteryTopic = topics.getBatteryLevelTopic();
+        accelerationTopic = createTopic("android_pebble_2_acceleration", Pebble2Acceleration.class);
+        batteryTopic = createTopic("android_pebble_2_battery_level", Pebble2BatteryLevel.class);
+        heartRateTopic = createTopic("android_pebble_2_heartrate", Pebble2HeartRate.class);
+        heartRateFilteredTopic = createTopic("android_pebble_2_heartrate_filtered", Pebble2HeartRateFiltered.class);
 
         this.dataLogReceiver = new PebbleKit.PebbleDataLogReceiver(APP_UUID) {
             @Override
@@ -208,7 +206,7 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
             }
         }
 
-        BluetoothManager btManager = (BluetoothManager)getService().getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothManager btManager = (BluetoothManager) getService().getSystemService(Context.BLUETOOTH_SERVICE);
 
         for (BluetoothDevice btDevice : btManager.getConnectedDevices(GATT_SERVER)) {
             String name = btDevice.getName();
@@ -231,8 +229,8 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
 
     private synchronized boolean deviceIsAcceptable(String name, String address) {
         return (this.acceptableIds.length == 0
-                    || Strings.findAny(acceptableIds, name)
-                    || Strings.findAny(acceptableIds, address));
+                || Strings.findAny(acceptableIds, name)
+                || Strings.findAny(acceptableIds, address));
     }
 
     @Override
@@ -264,5 +262,9 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
     @Override
     protected void registerDeviceAtReady() {
         // register at connect instead
+    }
+
+    public static AvroTopic<ObservationKey, Pebble2HeartRateFiltered> getHeartRateFilteredTopic() {
+        return heartRateFilteredTopic;
     }
 }

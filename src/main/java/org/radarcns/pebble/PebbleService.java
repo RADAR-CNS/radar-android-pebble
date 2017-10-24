@@ -16,15 +16,9 @@
 
 package org.radarcns.pebble;
 
-import org.apache.avro.specific.SpecificRecord;
 import org.radarcns.android.device.DeviceService;
-import org.radarcns.kafka.ObservationKey;
-import org.radarcns.topic.AvroTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A service that manages a Pebble2DeviceManager and a TableDataHandler to send store the data of a
@@ -32,14 +26,11 @@ import java.util.List;
  */
 public class PebbleService extends DeviceService<PebbleDeviceStatus> {
     private static final Logger logger = LoggerFactory.getLogger(PebbleService.class);
-    private PebbleTopics topics;
 
     @Override
     public void onCreate() {
         logger.info("Creating Pebble2 service {}", this);
         super.onCreate();
-
-        topics = PebbleTopics.getInstance();
     }
 
     @Override
@@ -50,17 +41,5 @@ public class PebbleService extends DeviceService<PebbleDeviceStatus> {
     @Override
     protected PebbleDeviceStatus getDefaultState() {
         return new PebbleDeviceStatus();
-    }
-
-    @Override
-    protected PebbleTopics getTopics() {
-        return topics;
-    }
-
-    @Override
-    protected List<AvroTopic<ObservationKey, ? extends SpecificRecord>> getCachedTopics() {
-        return Arrays.<AvroTopic<ObservationKey, ? extends SpecificRecord>>asList(
-                topics.getAccelerationTopic(), topics.getHeartRateTopic(),
-                topics.getHeartRateFilteredTopic());
     }
 }
