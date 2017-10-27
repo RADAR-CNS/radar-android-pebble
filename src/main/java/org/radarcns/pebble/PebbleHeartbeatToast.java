@@ -16,7 +16,6 @@
 
 package org.radarcns.pebble;
 
-import android.content.Context;
 import android.os.AsyncTask;
 import android.widget.Toast;
 import org.radarcns.android.device.DeviceServiceConnection;
@@ -24,7 +23,6 @@ import org.radarcns.android.util.Boast;
 import org.radarcns.data.Record;
 import org.radarcns.kafka.ObservationKey;
 import org.radarcns.passive.pebble.Pebble2HeartRateFiltered;
-import org.radarcns.topic.AvroTopic;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -34,35 +32,29 @@ import java.util.List;
  * Shows recently collected heartbeats in a Toast.
  */
 public class PebbleHeartbeatToast extends AsyncTask<Void, Void, String> {
-    private final Context context;
     private final DeviceServiceConnection<PebbleDeviceStatus> connection;
     private static final DecimalFormat singleDecimal = new DecimalFormat("0.0");
 
-    public PebbleHeartbeatToast(Context context, DeviceServiceConnection<PebbleDeviceStatus> connection) {
-        this.context = context;
+    public PebbleHeartbeatToast(DeviceServiceConnection<PebbleDeviceStatus> connection) {
         this.connection = connection;
     }
 
     @Override
     protected final String doInBackground(Void... params) {
-        AvroTopic<ObservationKey, Pebble2HeartRateFiltered> topic = PebbleDeviceManager.getHeartRateFilteredTopic();
-
-        if (topic != null) {
-            try {
-                List<Record<ObservationKey, Pebble2HeartRateFiltered>> measurements = connection.getRecords(topic, 25);
-                if (!measurements.isEmpty()) {
-                    StringBuilder sb = new StringBuilder(3200); // <32 chars * 100 measurements
-                    for (Record<ObservationKey, Pebble2HeartRateFiltered> measurement : measurements) {
-                        long diffTimeMillis = System.currentTimeMillis() - (long) (1000d * measurement.value.getTimeReceived());
-                        sb.append(singleDecimal.format(diffTimeMillis / 1000d));
-                        sb.append(" sec. ago: ");
-                        sb.append(singleDecimal.format(measurement.value.getHeartRate()));
-                        sb.append(" bpm\n");
-                    }
-                    return sb.toString();
+        try {
+            List<Record<ObservationKey, Pebble2HeartRateFiltered>> measurements = connection.getRecords("android_pebble_2_heartrate_filtered", 25);
+            if (!measurements.isEmpty()) {
+                StringBuilder sb = new StringBuilder(3200); // <32 chars * 100 measurements
+                for (Record<ObservationKey, Pebble2HeartRateFiltered> measurement : measurements) {
+                    long diffTimeMillis = System.currentTimeMillis() - (long) (1000d * measurement.value.getTimeReceived());
+                    sb.append(singleDecimal.format(diffTimeMillis / 1000d));
+                    sb.append(" sec. ago: ");
+                    sb.append(singleDecimal.format(measurement.value.getHeartRate()));
+                    sb.append(" bpm\n");
                 }
-            } catch (IOException ignore) {
+                return sb.toString();
             }
+        } catch (IOException ignore) {
         }
 
         return "No heart rate collected yet.";
@@ -70,6 +62,6 @@ public class PebbleHeartbeatToast extends AsyncTask<Void, Void, String> {
 
     @Override
     protected void onPostExecute(String result) {
-        Boast.makeText(context, result, Toast.LENGTH_LONG).show();
+        Boast.makeText(connection.getContext(), result, Toast.LENGTH_LONG).show();
     }
 }

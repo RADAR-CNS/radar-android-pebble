@@ -67,19 +67,19 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
     private final BroadcastReceiver disconnectReceiver;
     private final PebbleKit.PebbleDataLogReceiver dataLogReceiver;
 
-    private final AvroTopic<ObservationKey, Pebble2Acceleration> accelerationTopic;
-    private final AvroTopic<ObservationKey, Pebble2HeartRate> heartRateTopic;
-    private static volatile AvroTopic<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTopic;
-    private final AvroTopic<ObservationKey, Pebble2BatteryLevel> batteryTopic;
+    private final AvroTopic<ObservationKey, Pebble2Acceleration> accelerationTopic =
+            createTopic("android_pebble_2_acceleration", Pebble2Acceleration.class);
+    private final AvroTopic<ObservationKey, Pebble2HeartRate> heartRateTopic =
+            createTopic("android_pebble_2_heartrate", Pebble2HeartRate.class);
+    private final AvroTopic<ObservationKey, Pebble2HeartRateFiltered> heartRateFilteredTopic =
+            createTopic("android_pebble_2_heartrate_filtered", Pebble2HeartRateFiltered.class);
+    private final AvroTopic<ObservationKey, Pebble2BatteryLevel> batteryTopic =
+            createTopic("android_pebble_2_battery_level", Pebble2BatteryLevel.class);
 
     private Pattern[] acceptableIds;
 
     public PebbleDeviceManager(PebbleService service) {
         super(service);
-        accelerationTopic = createTopic("android_pebble_2_acceleration", Pebble2Acceleration.class);
-        batteryTopic = createTopic("android_pebble_2_battery_level", Pebble2BatteryLevel.class);
-        heartRateTopic = createTopic("android_pebble_2_heartrate", Pebble2HeartRate.class);
-        heartRateFilteredTopic = createTopic("android_pebble_2_heartrate_filtered", Pebble2HeartRateFiltered.class);
 
         this.dataLogReceiver = new PebbleKit.PebbleDataLogReceiver(APP_UUID) {
             @Override
@@ -262,9 +262,5 @@ class PebbleDeviceManager extends AbstractDeviceManager<PebbleService, PebbleDev
     @Override
     protected void registerDeviceAtReady() {
         // register at connect instead
-    }
-
-    public static AvroTopic<ObservationKey, Pebble2HeartRateFiltered> getHeartRateFilteredTopic() {
-        return heartRateFilteredTopic;
     }
 }
