@@ -44,7 +44,7 @@ public class PebbleServiceProvider extends DeviceServiceProvider<PebbleDeviceSta
 
     @SuppressWarnings("unchecked")
     public void showDetailView() {
-        new PebbleHeartbeatToast(getRadarService(), getConnection()).execute();
+        new PebbleHeartbeatToast(getConnection()).execute();
     }
 
     @Override
