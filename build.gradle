@@ -78,7 +78,7 @@ dependencies {
     compile 'com.getpebble:pebblekit:4.0.0'
 
     compile 'org.radarcns:radar-commons-android:0.3'
-    compile 'org.radarcns:radar-schemas-commons:0.2'
+    compile 'org.radarcns:radar-schemas-commons:0.5.15'
 
     testCompile 'junit:junit:4.12'
     testCompile 'org.slf4j:slf4j-simple:1.7.25'
